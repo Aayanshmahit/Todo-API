@@ -1,5 +1,6 @@
 from fastapi import FastAPI , HTTPException
 from validate import ValidInputs
+from patch_validation import patch_input_validate
 
 app = FastAPI()
 
@@ -44,5 +45,16 @@ def update_post(id : int , data : ValidInputs):
         "title" : data.title , 
         "description" : data.description,
         "completion" : data.completed
+    }
+    return post_store[id]
+
+@app.patch("/posts/{id}")
+def update_single_post(id : int , data : patch_input_validate):
+    if id not in post_store:
+        raise HTTPException(status_code = 404 , detail = "Post not Found")
+    post_store[id] = {
+        "title" : data.title if data.title is not None else post_store[id]["title"],
+        "description" : data.description if data.description is not None else post_store[id]["description"],
+        "completion" : data.completed if data.completed is not None else post_store[id]["completion"]
     }
     return post_store[id]
