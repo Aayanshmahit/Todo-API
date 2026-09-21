@@ -1,6 +1,7 @@
 from fastapi import FastAPI , HTTPException
 from validate import ValidInputs
 from patch_validation import patch_input_validate
+from database import get_connection
 
 app = FastAPI()
 
@@ -9,19 +10,28 @@ post_store = {}
 
 @app.post("/posts")
 def create_post(data : ValidInputs):
-    global post_num
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("""
+        INSERT INTO todos(title,descripton,completion)
+        VALUES(? , ? , ?)
+    """,(data.title , data.description , data.completed))
+    connection.commit()
+
     response = {
         "title" : data.title , 
         "description" : data.description,
         "completion" : data.completed
     }
-    post_store[post_num] = response
-    post_num+=1
     return response
 
 @app.get("/posts")
 def get_post():
-    return post_store
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("""SELECT * FROM todos""")
+    rows = cursor.fetchall()
+    return rows
 
 @app.get("/posts/{id}")
 def get_post_id(id : int):
