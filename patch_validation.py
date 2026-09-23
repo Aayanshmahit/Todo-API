@@ -1,8 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
-from validate import ValidInputs
 
 class patch_input_validate(BaseModel):
-    title : Optional[str]
-    description : Optional[str]
-    completed : Optional[bool]
+    title : Optional[str] = None
+    description : Optional[str] = None
+    completed : Optional[bool] = None
