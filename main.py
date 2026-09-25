@@ -18,8 +18,8 @@ def create_post(data : ValidInputs):
         """,(data.title , data.description , data.completed))
         connection.commit()
 
-        new_row = cursor.lastrowid
-        cursor.execute("""SELECT * FROM todos where id = ?""",(new_row,))
+        new_id = cursor.lastrowid
+        cursor.execute("""SELECT * FROM todos where id = ?""",(new_id,))
         row = cursor.fetchone()
 
     except sqlite3.Error:
@@ -27,77 +27,110 @@ def create_post(data : ValidInputs):
 
     finally:
         connection.close()
-        return row
+    return row
 
 @app.get("/posts")
 def get_post():
-    connection = get_connection()
-    cursor = connection.cursor()
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
 
-    cursor.execute("""SELECT * FROM todos""")
-    rows = cursor.fetchall()
+        cursor.execute("""SELECT * FROM todos""")
+        rows = cursor.fetchall()
+
+    except sqlite3.Error:
+        raise HTTPException(status_code = 500 , detail = "Database error")
+
+    finally:
+        connection.close()
     return rows
 
 @app.get("/posts/{id}")
 def get_post_id(id : int):
-    connection = get_connection()
-    cursor = connection.cursor()
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
 
-    cursor.execute("""SELECT * FROM todos where id = ?""",(id,))
-    rows = cursor.fetchone()
+        cursor.execute("""SELECT * FROM todos where id = ?""",(id,))
+        row = cursor.fetchone()
 
-    if not rows:
-        raise HTTPException(status_code = 404 , detail = "Post not Found")
-    return rows
+        if not row:
+            raise HTTPException(status_code = 404 , detail = "Post not Found")
+    except sqlite3.Error:
+        raise HTTPException(status_code = 500 , detail = "Database error")
+
+    finally:
+        connection.close()
+    return row
 
 @app.delete("/posts/{id}")
 def delete_post(id : int):
-    connection = get_connection()
-    cursor = connection.cursor()
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        
+        cursor.execute("""DELETE FROM todos where id = ?""",(id,))
+        deleted = cursor.rowcount
+        if deleted == 0:
+            raise HTTPException(status_code = 404 , detail = "Post not Found")
+        connection.commit()
+
+    except sqlite3.Error:
+        raise HTTPException(status_code = 500 , detail = "Database error")
+
+    finally:
+        connection.close()
     
-    cursor.execute("""DELETE FROM todos where id = ?""",(id,))
-    deleted = cursor.rowcount
-    if deleted == 0:
-        raise HTTPException(status_code = 404 , detail = "Post not Found")
-    connection.commit()
-    
-    return deleted
+    return "Post Deleted successfully"
 
 @app.put("/posts/{id}")
 def update_post(id : int , data : ValidInputs):
-    connection = get_connection()
-    cursor = connection.cursor()
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
 
-    cursor.execute("""UPDATE todos set "title" = ? , "description" = ? , completion = ? where id = ?""",(data.title,data.description,data.completed,id,))
+        cursor.execute("""UPDATE todos set "title" = ? , "description" = ? , completion = ? where id = ?""",(data.title,data.description,data.completed,id,))
 
-    update = cursor.rowcount
-    if update == 0:
-        raise HTTPException(status_code = 404 , detail = "Post not Found")
-    connection.commit()
-    
-    cursor.execute("""SELECT * FROM todos where id = ?""",(id,))
-    rows = cursor.fetchall()
+        update = cursor.rowcount
+        if update == 0:
+            raise HTTPException(status_code = 404 , detail = "Post not Found")
+        connection.commit()
+        
+        cursor.execute("""SELECT * FROM todos where id = ?""",(id,))
+        rows = cursor.fetchone()
+    except sqlite3.Error:
+        raise HTTPException(status_code = 500 , detail = "Database error")
+
+    finally:
+        connection.close()
     return rows
 
 @app.patch("/posts/{id}")
 def update_value_post(id : int , data : patch_input_validate):
-    connection = get_connection()
-    cursor = connection.cursor()
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
 
-    if data.title is not None:
-        cursor.execute("""UPDATE todos SET title = ? WHERE id = ?""",(data.title , id,))
+        if data.title is not None:
+            cursor.execute("""UPDATE todos SET title = ? WHERE id = ?""",(data.title , id,))
 
-    if data.description is not None:
-        cursor.execute("""UPDATE todos SET description = ? WHERE id = ?""",(data.description , id,))
+        if data.description is not None:
+            cursor.execute("""UPDATE todos SET description = ? WHERE id = ?""",(data.description , id,))
 
-    if data.completed is not None:
-        cursor.execute("""UPDATE todos SET completion = ? WHERE id = ?""",(data.completed , id,))
+        if data.completed is not None:
+            cursor.execute("""UPDATE todos SET completion = ? WHERE id = ?""",(data.completed , id,))
 
-    connection.commit()
-    cursor.execute("""SELECT * FROM todos WHERE id = ? """,(id,))
-    rows = cursor.fetchone()
+        connection.commit()
+        cursor.execute("""SELECT * FROM todos WHERE id = ? """,(id,))
+        rows = cursor.fetchone()
 
-    if rows is None:
-        raise HTTPException(status_code = 404 , detail = "Post not Found")
+        if rows is None:
+            raise HTTPException(status_code = 404 , detail = "Post not Found")
+
+    except sqlite3.Error:
+            raise HTTPException(status_code = 500 , detail = "Database error")
+
+    finally:
+        connection.close()
 
     return rows
