@@ -1,4 +1,6 @@
-def get_connection():
-    import sqlite3
-    connection = sqlite3.connect("todos.db")
-    return connection
+from sqlmodel import SQLModel , create_engine
+from models import Todos
+
+engine = create_engine("sqlite:///todos.db")
+
+SQLModel.metadata.create_all(engine)
