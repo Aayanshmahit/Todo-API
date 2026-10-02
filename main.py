@@ -3,11 +3,14 @@ from validate import ValidInputs
 from patch_validation import patch_input_validate
 from database import get_connection
 import sqlite3
+from database import get_session
+from sqlmodel import Session
+from fastapi import Depends
 
 app = FastAPI()
 
 @app.post("/posts")
-def create_post(data : ValidInputs):
+def create_post(session : Session = Depends(get_session)):
     try:
         connection = get_connection()
         cursor = connection.cursor()
