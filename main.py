@@ -3,49 +3,33 @@ from validate import ValidInputs
 from patch_validation import patch_input_validate
 from database import get_connection
 import sqlite3
+from models import Todos
 from database import get_session
-from sqlmodel import Session
+from sqlmodel import Session , select
 from fastapi import Depends
+from database import engine
+from sqlmodel import Field , SQLModel
 
 app = FastAPI()
 
 @app.post("/posts")
-def create_post(session : Session = Depends(get_session)):
-    try:
-        connection = get_connection()
-        cursor = connection.cursor()
+def create_post(data : ValidInputs , session : Session = Depends(get_session)):
+    todo = Todos(
+        title = data.title,
+        description = data.description,
+        completion = data.completion
+    )
 
-        cursor.execute("""
-            INSERT INTO todos(title,description,completion)
-            VALUES(? , ? , ?)
-        """,(data.title , data.description , data.completed))
-        connection.commit()
-
-        new_id = cursor.lastrowid
-        cursor.execute("""SELECT * FROM todos where id = ?""",(new_id,))
-        row = cursor.fetchone()
-
-    except sqlite3.Error:
-        raise HTTPException(status_code = 500 , detail = "Database Error")
-
-    finally:
-        connection.close()
-    return row
+    session.add(todo)
+    session.commit()
+    session.refresh(todo)
+    return session.get(Todos , todo.id)
 
 @app.get("/posts")
-def get_post():
-    try:
-        connection = get_connection()
-        cursor = connection.cursor()
-
-        cursor.execute("""SELECT * FROM todos""")
-        rows = cursor.fetchall()
-
-    except sqlite3.Error:
-        raise HTTPException(status_code = 500 , detail = "Database error")
-
-    finally:
-        connection.close()
+def get_post(session : Session = Depends(get_session)):
+    statement = select(Todos)
+    result = session.exec(statement)
+    rows = result.all()
     return rows
 
 @app.get("/posts/{id}")
