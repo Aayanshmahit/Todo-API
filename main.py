@@ -1,7 +1,7 @@
 from fastapi import FastAPI , HTTPException
 from validate import ValidInputs
 from patch_validation import patch_input_validate
-from database import get_connection
+from database import get_session
 import sqlite3
 from models import Todos
 from database import get_session
@@ -17,7 +17,7 @@ def create_post(data : ValidInputs , session : Session = Depends(get_session)):
     todo = Todos(
         title = data.title,
         description = data.description,
-        completion = data.completion
+        completion = data.completed
     )
 
     session.add(todo)
@@ -71,26 +71,17 @@ def delete_post(id : int):
     return "Post Deleted successfully"
 
 @app.put("/posts/{id}")
-def update_post(id : int , data : ValidInputs):
-    try:
-        connection = get_connection()
-        cursor = connection.cursor()
+def update_post(id : int , data : ValidInputs , session : Session = Depends(get_session)):
 
-        cursor.execute("""UPDATE todos set "title" = ? , "description" = ? , completion = ? where id = ?""",(data.title,data.description,data.completed,id,))
+    todo = session.get(Todos , id)
+    if todo is None:
+        raise HTTPException(status_code =404 , detail = "todo not found")
 
-        update = cursor.rowcount
-        if update == 0:
-            raise HTTPException(status_code = 404 , detail = "Post not Found")
-        connection.commit()
-        
-        cursor.execute("""SELECT * FROM todos where id = ?""",(id,))
-        rows = cursor.fetchone()
-    except sqlite3.Error:
-        raise HTTPException(status_code = 500 , detail = "Database error")
+    todo.title = data.title
+    todo.description = data.description
+    todo.completion = data.completed
 
-    finally:
-        connection.close()
-    return rows
+    session.commit()
 
 @app.patch("/posts/{id}")
 def update_value_post(id : int , data : patch_input_validate):
