@@ -4,7 +4,7 @@ from patch_validation import patch_input_validate
 from database import get_session
 from models import Todos
 from database import get_session
-from sqlmodel import Session , select
+from sqlmodel import Session , select , or_
 from fastapi import Depends
 from typing import Optional
 
@@ -24,17 +24,27 @@ def create_post(data : ValidInputs , session : Session = Depends(get_session)):
     return session.get(Todos , todo.id)
 
 @app.get("/posts")
-def get_post(search : Optional[str] = None , completed : Optional[bool] = None , session : Session = Depends(get_session)):
+def get_post(sort_by : Optional[str] = None , order_by : Optional[str] = None , search : Optional[str] = None , completed : Optional[bool] = None , session : Session = Depends(get_session)):
 
-    if completed is None:
-        statement = select(Todos)
-    else:
-        statement = select(Todos).where(Todos.completion == completed)
+    statement = select(Todos)
 
-    if search is None:
-        statement = select(Todos)
-    else:
-        statement = select(Todos).where(Todos.title and Todos.description == search)
+    if sort_by is None:
+        raise HTTPException(status_code = 400 , detail = "sort_by is not provided")
+
+    if order_by is None:
+        raise HTTPException(status_code = 400 , detail = "order_by is not provided")
+
+    if sort_by and order_by is None:
+        pass
+
+    if completed is not None:
+        statement = statement.where(Todos.completion == completed)
+
+    if search is not None:
+        statement = statement.where(
+        or_
+        (Todos.title.contains(search) , Todos.description.contains(search))
+        )
 
     result = session.exec(statement)
     return result.all()
