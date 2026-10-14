@@ -40,23 +40,32 @@ def get_post(limit_no : Optional[int] = None , offset_no : Optional[int] = None 
     if offset_no is not None:
         statement = statement.offset(offset_no)
 
+    if (sort_by is None) != (order_by is None):
+        raise HTTPException(
+            status_code=400,
+            detail="sort_by and order_by must be provided together"
+        )
+
+    columns = {
+        "id": Todos.id,
+        "title": Todos.title
+    }
+
     if sort_by is not None:
-        columns = {
-            "id" : Todos.id,
-            "title" : Todos.title
-        }
+        if sort_by not in columns:
+            raise HTTPException(status_code=400, detail="Invalid sort_by field")
 
-    if sort_by not in columns:
-        raise HTTPException(status_code = 400 , detail = "invalid values")
+        if order_by not in ("asc", "desc"):
+            raise HTTPException(
+                status_code=400,
+                detail="order_by must be 'asc' or 'desc'"
+            )
 
-    if order_by not in ("asc" , "dsc"):
-        raise HTTPException(status_code = 400 , detail = "invalid values")
-
-    column = columns[sort_by]
-
-    statement = statement.order_by(
-    column.asc() if order_by == "asc" else column.desc()
-    )
+    if sort_by is not None:
+        column = columns[sort_by]
+        statement = statement.order_by(
+            column.asc() if order_by == "asc" else column.desc()
+        )
 
     if completed is not None:
         statement = statement.where(Todos.completion == completed)
