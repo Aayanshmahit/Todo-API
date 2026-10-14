@@ -24,18 +24,39 @@ def create_post(data : ValidInputs , session : Session = Depends(get_session)):
     return session.get(Todos , todo.id)
 
 @app.get("/posts")
-def get_post(sort_by : Optional[str] = None , order_by : Optional[str] = None , search : Optional[str] = None , completed : Optional[bool] = None , session : Session = Depends(get_session)):
+def get_post(limit_no : Optional[int] = None , offset_no : Optional[int] = None , sort_by : Optional[str] = None , order_by : Optional[str] = None , search : Optional[str] = None , completed : Optional[bool] = None , session : Session = Depends(get_session)):
 
     statement = select(Todos)
 
-    if sort_by is None:
-        raise HTTPException(status_code = 400 , detail = "sort_by is not provided")
+    if limit_no is not None and limit_no <= 0 :
+        raise HTTPException(status_code = 400 , detail = "invalid values")
 
-    if order_by is None:
-        raise HTTPException(status_code = 400 , detail = "order_by is not provided")
+    if offset_no is not None and offset_no < 0:
+        raise HTTPException(status_code = 400 , detail = "invalid values")
 
-    if sort_by and order_by is None:
-        pass
+    if limit_no is not None:
+        statement = statement.limit(limit_no)
+
+    if offset_no is not None:
+        statement = statement.offset(offset_no)
+
+    if sort_by is not None:
+        columns = {
+            "id" : Todos.id,
+            "title" : Todos.title
+        }
+
+    if sort_by not in columns:
+        raise HTTPException(status_code = 400 , detail = "invalid values")
+
+    if order_by not in ("asc" , "dsc"):
+        raise HTTPException(status_code = 400 , detail = "invalid values")
+
+    column = columns[sort_by]
+
+    statement = statement.order_by(
+    column.asc() if order_by == "asc" else column.desc()
+    )
 
     if completed is not None:
         statement = statement.where(Todos.completion == completed)
